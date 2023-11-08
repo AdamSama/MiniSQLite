@@ -12,7 +12,12 @@ void print_prompt() {
 // 2. allow compiling common queries once and caching the bytecode for improved performace
 
 int main(int argc, char *argv[]) {
-    Table* table = new_table();
+    if (argc < 2) {
+        printf("Must supply a database filename.\n");
+        exit(EXIT_FAILURE);
+    }
+    char* filename = argv[1];
+    Table* table = db_open(filename);
     InputBuffer* input_buffer = new_input_buffer();
     // create a inifinite loop for REPL
     while (1)
@@ -21,7 +26,7 @@ int main(int argc, char *argv[]) {
         read_input(input_buffer);
         char *buf = input_buffer->buffer;
         if (strncmp(buf, ".", 1) == 0) {
-            switch (do_meta_command(input_buffer)) {
+            switch (do_meta_command(input_buffer, table)) {
                 case(META_COMMAND_SUCCESS):
                     continue;
                 case(META_COMMAND_UNRECOGNIZED_COMMAND):
@@ -33,6 +38,12 @@ int main(int argc, char *argv[]) {
         switch (prepare_statement(input_buffer, &statement)) {
             case(PREPARE_SUCCESS):
                 break;
+            case PREPARE_STRING_TOO_LONG:
+                printf("String is too long.\n");
+                continue;
+            case PREPARE_NEGATIVE_ID:
+                printf("ID must be positive.\n");
+                continue;
             case PREPARE_SYNTAX_ERROR:
                 printf("Syntax error. Could not parse statement. \n");
                 continue;

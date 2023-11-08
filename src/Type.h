@@ -16,8 +16,8 @@ typedef struct {
 
 typedef struct {
     uint32_t id;
-    char username[COLUMN_USERNAME_SIZE];
-    char email[COLUMN_EMAIL_SIZE];
+    char username[COLUMN_USERNAME_SIZE + 1];
+    char email[COLUMN_EMAIL_SIZE + 1];
 } Row;
 
 typedef enum {
@@ -28,7 +28,9 @@ typedef enum {
 typedef enum {
     PREPARE_SUCCESS,
     PREPARE_UNRECOGNIZED_STATEMENT,
-    PREPARE_SYNTAX_ERROR
+    PREPARE_SYNTAX_ERROR,
+    PREPARE_STRING_TOO_LONG,
+    PREPARE_NEGATIVE_ID
 } PrepareResult;
 
 typedef enum {
@@ -57,9 +59,19 @@ extern const uint32_t PAGE_SIZE;
 extern const uint32_t ROWS_PER_PAGE;
 extern const uint32_t TABLE_MAX_ROWS;
 
+// Define Pager such that pager gives a block of memory.
+// 1. It first looks in its cache. On a cache miss, it copies data from disk
+// into memory.
+
+typedef struct {
+    int file_descriptor;
+    uint32_t file_length;
+    void* pages[TABLE_MAX_PAGES];
+} Pager;
+
 typedef struct {
     uint32_t num_rows;
-    void* pages[TABLE_MAX_PAGES];
+    Pager* pager;
 } Table;
 
 typedef enum {
@@ -70,6 +82,7 @@ typedef enum {
 Table* new_table(void);
 InputBuffer* new_input_buffer(void);
 void read_input(InputBuffer* input_buffer);
-MetaCommandResult do_meta_command(InputBuffer* input_buffer);
+MetaCommandResult do_meta_command(InputBuffer* input_buffer, Table* Table);
 PrepareResult prepare_statement(InputBuffer* input_buffer, Statement* statement);
 ExecuteResult execute_statement(Statement* statement, Table* table);
+Table* db_open(const char* filename);
